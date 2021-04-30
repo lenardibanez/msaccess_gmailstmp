@@ -1,0 +1,103 @@
+Option Compare Database
+Option Explicit
+
+Private Sub btnSendEmailTest_Click()
+If IsNull(txtGmailFrom) Or txtGmailFrom = "" Or IsNull(txtGmailPassword) Or txtGmailPassword = "" Or IsNull(txtGmailTo) Or txtGmailTo = "" Then
+    MsgBox "ALL Fields MUST be Filled"
+    Exit Sub
+End If
+
+    MsgBox "True means the Message was sent >>> = " & fSendGmail, , "Send Gmail from MS Access by Tony Hine"
+    
+End Sub      'btnSendEmailTest_Click
+
+Private Function fSendGmail() As Boolean 'Returns True if No Errors are Generated
+On Error GoTo Err_ErrorHandler
+fSendGmail = True
+
+'Standard CDO Constants
+'NOTE --- If you set conCdoSmtpUseSSL to True, you may need to set conCdoSendUsingPort to 465 or port number specified by your ISP.
+Const conStrPrefix As String = "http://schemas.microsoft.com/cdo/configuration/"
+Const conCdoSendUsingPort As Integer = 2    'If incorrect raises this Error: -2147220960
+'Const conSendPassword As String = "YourGmailPasswordHere"
+Const conCdoBasic As Integer = 1
+'Const conSendUserName As String = "YourGmailAddrHere@gmail.com"
+Const conStrSmtpServer As String = "smtp.gmail.com"     'If incorrect raises this Error: -2147220973
+Const conCdoSmtpUseSSL As Boolean = True    'Use Secure Sockets Layer (SSL) when posting via SMTP.
+Const conCdoSmtpServerPort As Integer = 587 'Can be 465 or 587 'If incorrect raises this Error: -2147220973
+
+Dim oMsg As Object
+Dim oConf As Object
+
+Dim strEmailAddr As String
+strEmailAddr = txtGmailTo & ">"
+
+'Create Objects
+Set oMsg = CreateObject("CDO.Message")
+Set oConf = CreateObject("CDO.Configuration")
+Set oMsg.Configuration = oConf
+
+'Build the Message
+With oMsg
+    .to = "Testing <" & strEmailAddr       'If incorrect you will get an email From: Delivery Status Notification (Failure) Delivery to the following recipient failed permanently:
+    .From = "From TextBox <MyGoogleMailAddr@gmail.com>"    'If incorrect raises this Error: -2147220973
+    .subject = "From Keyed in Email Address"
+    .textBody = "From Keyed in Email Address"
+End With
+            
+''Set Delivery Options
+            With oConf.Fields
+                .Item(conStrPrefix & "sendusing") = conCdoSendUsingPort
+                .Item(conStrPrefix & "smtpserver") = conStrSmtpServer
+                .Item(conStrPrefix & "smtpauthenticate") = conCdoBasic
+                .Item(conStrPrefix & "sendusername") = txtGmailFrom
+                .Item(conStrPrefix & "sendpassword") = txtGmailPassword
+                '.Item(conStrPrefix & "sendusername") = conSendUserName 'IF you want to hard code the username you can reactivate this line.
+                '.Item(conStrPrefix & "sendpassword") = conSendPassword 'IF you want to hard code the password you can reactivate this line.
+                .Item(conStrPrefix & "smtpusessl") = conCdoSmtpUseSSL
+                .Item(conStrPrefix & "smtpserverport") = conCdoSmtpServerPort
+                .Update 'Commit Changes
+            End With
+
+'Deliver the Message
+oMsg.send
+
+Exit_ErrorHandler:
+'Access 2007 Developer Reference > Microsoft Data Access Objects (DAO) Reference > DAO Reference > Recordset Object > Methods
+'An alternative to the Close method is to set the value of an object variable to Nothing (Set dbsTemp = Nothing).
+    Set oMsg.Configuration = Nothing
+    Set oConf = Nothing
+    Set oMsg = Nothing
+    Exit Function
+
+Err_ErrorHandler:
+    If Err.Number <> 0 Then fSendGmail = False
+        Select Case Err.Number
+
+            Case -2147220977  'Likely cause, Incorrectly Formatted Email Address, server rejected the Email Format
+                MsgBox "Error From --- fSendGmail --- Incorrectly Formatted Email ---  Error Number >>>  " _
+                & Err.Number & "  Error Desc >>  " & Err.Description, , "Format the Email Address Correctly"
+
+            Case -2147220980  'Likely cause, No Recipient Provided (No Email Address)
+                MsgBox "Error From --- fSendGmail --- No Email Address ---  Error Number >>>  " _
+                & Err.Number & "  Error Desc >>  " & Err.Description, , "You Need to Provide an Email Address"
+
+            Case -2147220960 'Likely cause, SendUsing Configuration Error
+                MsgBox "Error From --- fSendGmail --- The SendUsing configuration value is invalid --- LOOK HERE >>> sendusing) = conCdoSendUsingPort ---  Error Number >>>  " _
+                & Err.Number & "  Error Desc >>  " & Err.Description, , "SendUsing Configuration Error"
+            
+            Case -2147220973  'Likely cause, No Internet Connection
+                MsgBox "Error From --- fSendGmail --- No Internet Connection ---  Error Number >>>  " _
+                & Err.Number & "  Error Desc >>  " & Err.Description, , "No Internet Connection"
+            
+            Case -2147220975  'Likely cause, Incorrect Password
+                MsgBox "Error From --- fSendGmail --- Incorrect Password ---  Error Number >>>  " _
+                & Err.Number & "  Error Desc >>  " & Err.Description, , "Incorrect Password"
+            
+            Case Else   'Report Other Errors
+                MsgBox "Error From --- fSendGmail --- Error Number >>>  " & Err.Number _
+                & "  <<< Error Description >>  " & Err.Description
+        End Select
+        
+    Resume Exit_ErrorHandler
+End Function      'fSendGmail
